@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      
+        <meta property="og:type" content="website">
+        <meta property="og:locale" content="pt_BR">
+        <meta property="og:url" content="https://bolttexturas.site/">
+        <meta property="og:site_name" content="bolttexturas">
+        <meta property="og:title" content="Bolt Texturas">
+        <meta property="og:description" content="O maior criador de texturas...">
+        <meta property="og:image" content="https://raw.githubusercontent.com/victorndesigner/bolttexturas/main/assets/imagens/pwbanner.png">
+        <meta property="og:image:type" content="image/png">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="628">
+        <meta property="og:image:alt" content="Banner Bolt Texturas">
+        <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/victorndesigner/bolttexturas/main/assets/imagens/pwicon.png">
+        <meta name="twitter:image" content="https://raw.githubusercontent.com/victorndesigner/bolttexturas/main/assets/imagens/pwicon.png">
+
+        <title>Beefund</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            body {
+                font-family: "Poppins", sans-serif;
+                background-color: #16161a;
+                color: white;
+                margin: 0;
+                padding: 0;
+            }
+            header {
+                text-align: center;
+                padding: 20px;
+                font-size: 28px;
+                font-weight: bold;
+            }
+            .container {
+                max-width: 700px;
+                margin: auto;
+                background: #252631;
+                padding: 20px;
+                border-radius: 15px;
+                box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.5);
+            }
+            label {
+                display: block;
+                margin-top: 15px;
+                font-size: 16px;
+            }
+            select,
+            input {
+                width: 100%;
+                padding: 10px;
+                margin-top: 5px;
+                border-radius: 10px;
+                border: none;
+                background: #202129;
+                color: white;
+                font-size: 15px;
+            }
+            button {
+                width: 100%;
+                padding: 12px;
+                margin-top: 20px;
+                background: #47ffb3;
+                border: none;
+                border-radius: 10px;
+                color: #202129;
+                font-size: 16px;
+                cursor: pointer;
+                transition: 0.3s;
+            }
+            button:hover {
+                background: #47ffb3;
+            }
+            .results {
+                margin-top: 20px;
+                padding: 15px;
+                background: #202129;
+                border-radius: 10px;
+            }
+            .results p {
+                margin: 8px 0;
+                font-size: 15px;
+            }
+            .chart-container {
+                margin-top: 20px;
+                background: #17181d;
+                padding: 15px;
+                border-radius: 15px;
+                display: flex;
+                justify-content: center;
+                display: none;
+            }
+            canvas {
+                width: 100% !important;
+                max-width: 650px;
+                height: 400px !important;
+            }
+            @media (max-width: 700px) {
+                header {
+                    font-size: 22px;
+                }
+                .container {
+                    margin: 15px;
+                    padding: 15px;
+                }
+                label {
+                    font-size: 14px;
+                }
+                select,
+                input,
+                button {
+                    font-size: 14px;
+                    padding: 8px;
+                }
+                canvas {
+                    height: 300px !important;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header>Beefund</header>
+        <div class="container">
+            <label for="trade">Trade:</label>
+            <select id="trade" onchange="atualizarPeriodos()">
+                <option value="sabrina">Sabrina Gan (3% - 1 dia)</option>
+                <option value="pepper">Pepperstone (16% - 7 dias)</option>
+                <option value="anne">Anne Richards (47% - 15 dias)</option>
+            </select>
+            <label for="currency">Moeda:</label>
+            <select id="currency">
+                <option value="usdt">USDT (Dólar)</option>
+                <option value="brl">BRL (Real)</option>
+            </select>
+            <label for="investment">Investimento:</label>
+            <input type="number" id="investment" step="0.01" />
+            <label for="period">Período:</label>
+            <select id="period"></select>
+            <button onclick="calcular()">Calcular</button>
+            <div class="results" id="results"></div>
+            <div class="chart-container" id="chartContainer">
+                <canvas id="evolucaoChart"></canvas>
+            </div>
+            <label for="withdraw">Retirar:</label>
+            <input
+                type="number"
+                id="withdraw"
+                step="0.01"
+                placeholder="Ex: 50.00"
+            />
+            <label for="withdrawType">Forma de retirada:</label>
+            <select id="withdrawType">
+                <option value="pix">Pix (8%)</option>
+                <option value="usdt">USDT (6%)</option>
+            </select>
+            <button id="btnRetirar" onclick="retirar()">Retirar</button>
+        </div>
+        <script>
+            let saldoAtual = 0, valorInvestido = 0, tempoInvestimento = "", taxaCambio = 5.46, chart = null;
+            let currencySelecionada = "usdt";
+            let historicoGlobal = [];
+            let saqueRealizado = false;
+            const trades = {
+              sabrina: {nome:"Sabrina Gan", fator:1.03, cicloDias:1, min:5, max:5, periodos:[{v:3,l:"3 dias"},{v:6,l:"6 dias"},{v:12,l:"12 dias"},{v:30,l:"1 mês"},{v:60,l:"2 meses"},{v:90,l:"3 meses"}]},
+              pepper: {nome:"Pepperstone", fator:1.16, cicloDias:7, min:10, max:100, periodos:[{v:7,l:"7 dias"},{v:14,l:"14 dias"},{v:30,l:"1 mês"},{v:60,l:"2 meses"},{v:90,l:"3 meses"}]},
+              anne: {nome:"Anne Richards", fator:1.47, cicloDias:15, min:20, max:200, periodos:[{v:15,l:"15 dias"},{v:30,l:"1 mês"},{v:60,l:"2 meses"},{v:90,l:"3 meses"},{v:180,l:"6 meses"}]}
+            };
+            function atualizarPeriodos(){
+              let tradeSel=document.getElementById("trade").value;
+              let select=document.getElementById("period");
+              select.innerHTML="";
+              trades[tradeSel].periodos.forEach(p=>{let opt=document.createElement("option"); opt.value=p.v; opt.textContent=p.l; select.appendChild(opt);});
+              atualizarPlaceholder();
+            }
+            function atualizarPlaceholder(){
+              let tradeSel=document.getElementById("trade").value;
+              let trade=trades[tradeSel];
+              const input=document.getElementById("investment");
+              if(currencySelecionada==="usdt"){input.placeholder=`Mín: ${trade.min}$ | Máx: ${trade.max}$`;}
+              else{input.placeholder=`Mín: R$ ${(trade.min*taxaCambio).toFixed(2)} | Máx: R$ ${(trade.max*taxaCambio).toFixed(2)}`;}
+              input.value="";
+            }
+            document.getElementById("currency").addEventListener("change",function(){currencySelecionada=this.value; atualizarPlaceholder();});
+            async function atualizarCambio(){try{let res=await fetch("https://api.exchangerate.host/latest?base=USD&symbols=BRL"); let data=await res.json(); taxaCambio=data.rates.BRL;} catch(e){console.log("Erro cambio:",e);} atualizarPlaceholder();}
+            function formatarValor(v){return currencySelecionada==="brl"?`R$ ${v.toFixed(2)}`:`${v.toFixed(2)}$`;}
+            function calcular(){
+              let tradeSel=document.getElementById("trade").value;
+              let trade=trades[tradeSel];
+              let input=parseFloat(document.getElementById("investment").value);
+              if(isNaN(input)){alert("Digite valor válido.");return;}
+              let investimentoUSD = currencySelecionada === "brl" ? input / taxaCambio : input;
+            let min = currencySelecionada === "brl" ? trade.min * taxaCambio : trade.min;
+            let max = currencySelecionada === "brl" ? trade.max * taxaCambio : trade.max;
+
+            if (input < min || input > max) {
+              alert(`O investimento deve estar entre ${formatarValor(min)} e ${formatarValor(max)}.`);
+              return;
+            }
+
+              let dias=parseInt(document.getElementById("period").value);
+              let ciclos=Math.floor(dias/trade.cicloDias);
+              let saldo=investimentoUSD;
+              let historico=[saldo];
+              let rendimentos=[];
+              for(let i=0;i<ciclos;i++){let rendimento=saldo*(trade.fator-1); saldo*=trade.fator; historico.push(saldo); rendimentos.push(rendimento);}
+              saldoAtual=saldo; valorInvestido=investimentoUSD;
+              tempoInvestimento=dias>=30?`${Math.floor(dias/30)} meses`:`${dias} dias`;
+              historicoGlobal=historico; saqueRealizado=false;
+              document.getElementById("btnRetirar").disabled=false;
+              document.getElementById("results").innerHTML=`
+                <p><b>Tempo:</b> ${tempoInvestimento}</p>
+                <p><b>Investimento Inicial:</b> ${formatarValor(currencySelecionada==="brl"?valorInvestido*taxaCambio:valorInvestido)}</p>
+                <p><b>Lucro Final:</b> ${formatarValor(currencySelecionada==="brl"?saldoAtual*taxaCambio:saldoAtual)}</p>
+              `;
+              document.getElementById("chartContainer").style.display="flex";
+              atualizarGrafico(historico, dias, trade.cicloDias);
+            }
+            function atualizarGrafico(historico, dias, ciclo){
+              const ctx=document.getElementById("evolucaoChart").getContext("2d");
+              let labels=[],dados=[];
+              if(dias<30){
+                labels=["Início","Fim"];
+                dados=[historico[0],historico[historico.length-1]].map(v=>currencySelecionada==="brl"?v*taxaCambio:v);
+              } else {
+                let totalMeses=Math.ceil(dias/30);
+                for(let m=0;m<=totalMeses;m++){
+                  labels.push(m===0?"Início":`${m}M`);
+                  let idx=Math.min(Math.floor(m*historico.length/totalMeses),historico.length-1);
+                  dados.push(currencySelecionada==="brl"?historico[idx]*taxaCambio:historico[idx]);
+                }
+              }
+              if(chart) chart.destroy();
+              chart=new Chart(ctx,{type:'line',data:{labels:labels,datasets:[{data:dados,borderColor:'#39ff14',backgroundColor:'rgba(57,255,20,0.15)',fill:true,tension:0.3,pointBackgroundColor:'#39ff14',pointRadius:5}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{intersect:true,mode:'nearest',callbacks:{label:function(context){let idx=context.dataIndex; let rendimento=idx>0?dados[idx]-dados[idx-1]:0; return `Saldo: ${formatarValor(dados[idx])}` + (idx>0?` | Rendimento: ${formatarValor(rendimento)}`:"");}}}},interaction:{intersect:true,mode:'nearest'},scales:{x:{ticks:{color:'#ccc'},grid:{color:'#555',borderColor:'#888'}},y:{ticks:{color:'#ccc'},grid:{color:'#555',borderColor:'#888'}}}}});
+            }
+            function retirar(){
+              if(saqueRealizado){alert("Você só pode sacar uma vez por cálculo.");return;}
+              let valor=parseFloat(document.getElementById("withdraw").value);
+              let tipo=document.getElementById("withdrawType").value;
+              if(isNaN(valor)||valor<=0){alert("Digite valor válido.");return;}
+              let saldoExib=currencySelecionada==="brl"?saldoAtual*taxaCambio:saldoAtual;
+              if(valor>saldoExib){alert("Saldo insuficiente.");return;}
+              let valorUSD=currencySelecionada==="brl"?valor/taxaCambio:valor;
+              let taxa=tipo==="pix"?0.08:0.06;
+              let liquidoUSD=valorUSD*(1-taxa);
+              saldoAtual-=valorUSD; saqueRealizado=true; document.getElementById("btnRetirar").disabled=true;
+              document.getElementById("results").innerHTML+=`
+                <p><b>Retirado:</b> ${formatarValor(valor)}</p>
+                <p><b>Recebido Líquido:</b> ${formatarValor(currencySelecionada==="brl"?liquidoUSD*taxaCambio:liquidoUSD)}</p>
+                <p><b>Atual:</b> ${formatarValor(currencySelecionada==="brl"?saldoAtual*taxaCambio:saldoAtual)}</p>
+              `;
+            }
+            window.addEventListener("load",()=>{atualizarCambio(); atualizarPeriodos();});
+        </script>
+    </body>
+</html>
