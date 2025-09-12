@@ -19,7 +19,7 @@
 <meta name="twitter:image" content="https://raw.githubusercontent.com/victorndesigner/beefund/main/img/icon.jpg">
 
 <title>Beefund</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 body {
     font-family: "Poppins", sans-serif;
@@ -83,20 +83,6 @@ button:hover {
     margin: 8px 0;
     font-size: 15px;
 }
-.chart-container {
-    margin-top: 20px;
-    background: #17181d;
-    padding: 15px;
-    border-radius: 15px;
-    display: flex;
-    justify-content: center;
-    display: none;
-}
-canvas {
-    width: 100% !important;
-    max-width: 650px;
-    height: 400px !important;
-}
 @media (max-width: 700px) {
     header {
         font-size: 22px;
@@ -113,9 +99,6 @@ canvas {
     button {
         font-size: 14px;
         padding: 8px;
-    }
-    canvas {
-        height: 300px !important;
     }
 }
 </style>
@@ -140,9 +123,6 @@ canvas {
     <select id="period"></select>
     <button onclick="calcular()">Calcular</button>
     <div class="results" id="results"></div>
-    <div class="chart-container" id="chartContainer">
-        <canvas id="evolucaoChart"></canvas>
-    </div>
     <label for="withdraw">Retirar:</label>
     <input type="number" id="withdraw" step="0.01" placeholder="Ex: 50.00"/>
     <label for="withdrawType">Forma de retirada:</label>
@@ -152,10 +132,10 @@ canvas {
     </select>
     <button id="btnRetirar" onclick="retirar()">Retirar</button>
 </div>
+
 <script>
-let saldoAtual = 0, valorInvestido = 0, tempoInvestimento = "", taxaCambio = 5.46, chart = null;
+let saldoAtual = 0, valorInvestido = 0, tempoInvestimento = "", taxaCambio = 5.46;
 let currencySelecionada = "usdt";
-let historicoGlobal = [];
 let saqueRealizado = false;
 
 const trades = {
@@ -214,35 +194,28 @@ function calcular(){
     let input = parseFloat(document.getElementById("investment").value);
     if(isNaN(input)){alert("Digite valor válido."); return;}
 
-    // Valor máximo por ciclo em USD
     let valorMaxPorCiclo = trade.max;
     if(currencySelecionada==="brl") valorMaxPorCiclo *= taxaCambio;
 
-    // Checar mínimo
     let minInvest = currencySelecionada==="usdt"?trade.min:trade.min*taxaCambio;
     if(input < minInvest){alert(`O investimento deve ser no mínimo ${formatarValor(minInvest)}.`); return;}
 
-    // Calcular dias investidos
     let ciclosCompletos = Math.floor(input / valorMaxPorCiclo);
     let sobra = input % valorMaxPorCiclo;
     let diasInvestidos = ciclosCompletos + (sobra > 0 ? 1 : 0);
 
-    // Calcular saldo usando o período selecionado
     let diasSelecionados = parseInt(document.getElementById("period").value);
     let investimentoUSD = currencySelecionada==="brl"?input/taxaCambio:input;
 
     let ciclos = Math.floor(diasSelecionados / trade.cicloDias);
     let saldo = investimentoUSD;
-    let historico = [saldo];
     for(let i=0;i<ciclos;i++){
         saldo *= trade.fator;
-        historico.push(saldo);
     }
 
     saldoAtual = saldo;
     valorInvestido = investimentoUSD;
     tempoInvestimento = diasSelecionados >= 30 ? `${Math.floor(diasSelecionados/30)} meses` : `${diasSelecionados} dias`;
-    historicoGlobal = historico;
     saqueRealizado = false;
     document.getElementById("btnRetirar").disabled = false;
 
@@ -252,52 +225,6 @@ function calcular(){
         <p><b>Investimento Inicial:</b> ${formatarValor(currencySelecionada==="brl"?valorInvestido*taxaCambio:valorInvestido)}</p>
         <p><b>Lucro Final:</b> ${formatarValor(currencySelecionada==="brl"?saldoAtual*taxaCambio:saldoAtual)}</p>
     `;
-
-    document.getElementById("chartContainer").style.display="flex";
-    atualizarGrafico(historico, diasSelecionados, trade.cicloDias);
-}
-
-function atualizarGrafico(historico, dias, ciclo){
-    const ctx = document.getElementById("evolucaoChart").getContext("2d");
-    let labels = [], dados = [];
-    if(dias < 30){
-        labels = ["Início","Fim"];
-        dados = [historico[0],historico[historico.length-1]].map(v=>currencySelecionada==="brl"?v*taxaCambio:v);
-    } else {
-        let totalMeses = Math.ceil(dias/30);
-        for(let m=0;m<=totalMeses;m++){
-            labels.push(m===0?"Início":`${m}M`);
-            let idx = Math.min(Math.floor(m*historico.length/totalMeses),historico.length-1);
-            dados.push(currencySelecionada==="brl"?historico[idx]*taxaCambio:historico[idx]);
-        }
-    }
-    if(chart) chart.destroy();
-    chart = new Chart(ctx,{
-        type:'line',
-        data:{labels: labels,datasets:[{data:dados,borderColor:'#39ff14',backgroundColor:'rgba(57,255,20,0.15)',fill:true,tension:0.3,pointBackgroundColor:'#39ff14',pointRadius:5}]},
-        options:{
-            responsive:true,
-            plugins:{
-                legend:{display:false},
-                tooltip:{
-                    intersect:true,
-                    mode:'nearest',
-                    callbacks:{
-                        label:function(context){
-                            let idx=context.dataIndex;
-                            let rendimento=idx>0?dados[idx]-dados[idx-1]:0;
-                            return `Saldo: ${formatarValor(dados[idx])}` + (idx>0?` | Rendimento: ${formatarValor(rendimento)}`:"");
-                        }
-                    }
-                }
-            },
-            interaction:{intersect:true,mode:'nearest'},
-            scales:{
-                x:{ticks:{color:'#ccc'},grid:{color:'#555',borderColor:'#888'}},
-                y:{ticks:{color:'#ccc'},grid:{color:'#555',borderColor:'#888'}}
-            }
-        }
-    });
 }
 
 function retirar(){
