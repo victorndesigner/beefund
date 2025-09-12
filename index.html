@@ -220,7 +220,7 @@ function calcular(){
     document.getElementById("btnRetirar").disabled = false;
 
     document.getElementById("results").innerHTML = `
-        <p><b>Dias investidos:</b> ${diasInvestidos}</p>
+        <p><b>Ciclos:</b> ${diasInvestidos}</p>
         <p><b>Tempo:</b> ${tempoInvestimento}</p>
         <p><b>Investimento Inicial:</b> ${formatarValor(currencySelecionada==="brl"?valorInvestido*taxaCambio:valorInvestido)}</p>
         <p><b>Lucro Final:</b> ${formatarValor(currencySelecionada==="brl"?saldoAtual*taxaCambio:saldoAtual)}</p>
